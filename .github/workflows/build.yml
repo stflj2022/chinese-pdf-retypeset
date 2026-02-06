@@ -33,22 +33,22 @@ jobs:
 
     - name: Install project dependencies
       run: |
-        pip install -r requirements.txt
+        pip install opencv-python-headless numpy Pillow PyMuPDF pdf2image PyYAML pytesseract
 
     - name: Build with PyInstaller (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        pyinstaller --onefile --name pdf-retypeset-linux src/main.py
+        pyinstaller --onefile --hidden-import cv2 --hidden-import PIL --hidden-import fitz --name pdf-retypeset-linux src/main.py
 
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --name pdf-retypeset.exe src/main.py
+        pyinstaller --onefile --hidden-import cv2 --hidden-import PIL --hidden-import fitz --name pdf-retypeset.exe src/main.py
 
     - name: Build with PyInstaller (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --onefile --name pdf-retypeset-mac src/main.py
+        pyinstaller --onefile --hidden-import cv2 --hidden-import PIL --hidden-import fitz --name pdf-retypeset-mac src/main.py
 
     - name: Upload artifacts (Linux)
       if: matrix.os == 'ubuntu-latest'
