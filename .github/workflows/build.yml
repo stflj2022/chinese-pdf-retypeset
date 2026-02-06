@@ -52,8 +52,9 @@ jobs:
           --hidden-import fitz \
           --hidden-import pdf2image \
           --hidden-import yaml \
+          --add-data "src:src" \
           --name pdf-retypeset-linux \
-          src/main.py
+          bundle_main.py
         echo "=== Listing dist directory ==="
         ls -lh dist/
         echo "=== Checking if file exists ==="
@@ -69,8 +70,9 @@ jobs:
           --hidden-import fitz \
           --hidden-import pdf2image \
           --hidden-import yaml \
+          --add-data "src;src" \
           --name pdf-retypeset \
-          src/main.py
+          bundle_main.py
         if exist dist\pdf-retypeset.exe ren dist\pdf-retypeset.exe pdf-retypeset-windows.exe
         dir dist\
 
@@ -83,8 +85,9 @@ jobs:
           --hidden-import fitz \
           --hidden-import pdf2image \
           --hidden-import yaml \
+          --add-data "src:src" \
           --name pdf-retypeset-mac \
-          src/main.py
+          bundle_main.py
         ls -lh dist/
 
     - name: Upload artifacts (Linux)
