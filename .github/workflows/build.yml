@@ -26,29 +26,54 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
+    - name: Install system dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
+
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-
-    - name: Install project dependencies
-      run: |
-        pip install opencv-python-headless numpy Pillow PyMuPDF pdf2image PyYAML pytesseract
+        pip install opencv-python-headless numpy Pillow PyMuPDF pdf2image PyYAML
 
     - name: Build with PyInstaller (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        pyinstaller --onefile --hidden-import cv2 --hidden-import PIL --hidden-import fitz --name pdf-retypeset-linux src/main.py
+        pyinstaller --onefile \
+          --hidden-import cv2 \
+          --hidden-import PIL \
+          --hidden-import fitz \
+          --hidden-import pdf2image \
+          --hidden-import yaml \
+          --name pdf-retypeset-linux \
+          src/main.py
 
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --onefile --hidden-import cv2 --hidden-import PIL --hidden-import fitz --name pdf-retypeset.exe src/main.py
+        pyinstaller --onefile \
+          --hidden-import cv2 \
+          --hidden-import PIL \
+          --hidden-import fitz \
+          --hidden-import pdf2image \
+          --hidden-import yaml \
+          --name pdf-retypeset \
+          src/main.py
+        ren dist\pdf-retypeset.exe pdf-retypeset-windows.exe
 
     - name: Build with PyInstaller (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --onefile --hidden-import cv2 --hidden-import PIL --hidden-import fitz --name pdf-retypeset-mac src/main.py
+        pyinstaller --onefile \
+          --hidden-import cv2 \
+          --hidden-import PIL \
+          --hidden-import fitz \
+          --hidden-import pdf2image \
+          --hidden-import yaml \
+          --name pdf-retypeset-mac \
+          src/main.py
 
     - name: Upload artifacts (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -62,7 +87,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: pdf-retypeset-windows
-        path: dist/pdf-retypeset.exe
+        path: dist/pdf-retypeset-windows.exe
 
     - name: Upload artifacts (macOS)
       if: matrix.os == 'macos-latest'
@@ -81,7 +106,7 @@ jobs:
       if: matrix.os == 'windows-latest' && github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/pdf-retypeset.exe
+        files: dist/pdf-retypeset-windows.exe
 
     - name: Release (macOS)
       if: matrix.os == 'macos-latest' && github.event_name == 'release'
