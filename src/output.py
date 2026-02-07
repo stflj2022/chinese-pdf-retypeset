@@ -14,7 +14,7 @@ import fitz  # PyMuPDF
 import numpy as np
 from PIL import Image
 
-from .config import OutputConfig, OutputLayoutConfig
+from src.config import OutputConfig, OutputLayoutConfig
 
 
 class OutputGenerator:

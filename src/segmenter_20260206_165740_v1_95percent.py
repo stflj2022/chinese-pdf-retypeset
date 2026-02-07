@@ -10,7 +10,7 @@ from typing import List
 import cv2
 import numpy as np
 
-from .config import SegmentationConfig
+from src.config import SegmentationConfig
 
 
 @dataclass

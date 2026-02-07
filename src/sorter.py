@@ -6,7 +6,7 @@
 
 from typing import List
 
-from .segmenter import CharacterBox, Segmenter
+from src.segmenter import CharacterBox, Segmenter
 
 
 class Sorter:

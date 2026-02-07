@@ -11,11 +11,11 @@ import cv2
 import numpy as np
 from pdf2image import convert_from_path
 
-from .config import Config
-from .layouter import Layouter
-from .output import OutputGenerator
-from .preprocessor import Preprocessor
-from .segmenter import CharacterBox, Segmenter
+from src.config import Config
+from src.layouter import Layouter
+from src.output import OutputGenerator
+from src.preprocessor import Preprocessor
+from src.segmenter import CharacterBox, Segmenter
 
 
 class Pipeline:

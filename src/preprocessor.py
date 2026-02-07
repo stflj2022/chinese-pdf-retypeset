@@ -8,7 +8,7 @@
 import cv2
 import numpy as np
 
-from .config import PreprocessingConfig
+from src.config import PreprocessingConfig
 
 
 class Preprocessor:

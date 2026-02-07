@@ -21,8 +21,8 @@ try:
 except ImportError:
     HAS_DND = False
 
-from .config import Config, PAGE_SIZES
-from .pipeline import Pipeline
+from src.config import Config, PAGE_SIZES
+from src.pipeline import Pipeline
 
 
 # 根据是否有拖拽支持选择基类

@@ -9,8 +9,8 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
-from .config import LayoutConfig, get_page_size
-from .segmenter import CharacterBox
+from src.config import LayoutConfig, get_page_size
+from src.segmenter import CharacterBox
 
 
 class Layouter:

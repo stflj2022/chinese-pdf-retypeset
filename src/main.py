@@ -8,8 +8,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import Config, load_config
-from .pipeline import Pipeline
+from src.config import Config, load_config
+from src.pipeline import Pipeline
 
 
 def main():
@@ -88,7 +88,7 @@ def main():
 
     # 启动GUI
     if args.gui:
-        from .gui import run_gui
+        from src.gui import run_gui
         run_gui()
         return
 
