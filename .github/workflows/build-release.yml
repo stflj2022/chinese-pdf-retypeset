@@ -34,7 +34,7 @@ jobs:
     - name: Build executable
       run: |
         pyinstaller --clean --noconfirm --onefile \
-          --name pdf-retypeset \
+          --name chinese-pdf-retypeset \
           --add-data "src:src" \
           --hidden-import=tkinter \
           --hidden-import=PIL._tkinter_finder \
@@ -44,7 +44,7 @@ jobs:
       run: |
         mkdir -p release
         cd dist
-        tar -czf ../release/pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz pdf-retypeset
+        tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz chinese-pdf-retypeset
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -73,13 +73,13 @@ jobs:
 
     - name: Build executable
       run: |
-        pyinstaller --clean --noconfirm --onefile --name pdf-retypeset --add-data "src;src" --hidden-import=tkinter --hidden-import=PIL._tkinter_finder run.py
+        pyinstaller --clean --noconfirm --onefile --name chinese-pdf-retypeset --add-data "src;src" --hidden-import=tkinter --hidden-import=PIL._tkinter_finder run.py
 
     - name: Package artifacts
       run: |
         mkdir release
-        Copy-Item dist/pdf-retypeset.exe release/
-        Compress-Archive -Path release/pdf-retypeset.exe -DestinationPath release/pdf-retypeset-${{ github.ref_name }}-windows-x86_64.zip
+        Copy-Item dist/chinese-pdf-retypeset.exe release/
+        Compress-Archive -Path release/chinese-pdf-retypeset.exe -DestinationPath release/chinese-pdf-retypeset-${{ github.ref_name }}-windows-x86_64.zip
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -113,7 +113,7 @@ jobs:
     - name: Build executable
       run: |
         pyinstaller --clean --noconfirm --onefile \
-          --name pdf-retypeset \
+          --name chinese-pdf-retypeset \
           --add-data "src:src" \
           --hidden-import=tkinter \
           --hidden-import=PIL._tkinter_finder \
@@ -123,7 +123,7 @@ jobs:
       run: |
         mkdir -p release
         cd dist
-        tar -czf ../release/pdf-retypeset-${{ github.ref_name }}-macos-x86_64.tar.gz pdf-retypeset
+        tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-macos-x86_64.tar.gz chinese-pdf-retypeset
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -164,15 +164,15 @@ jobs:
           - ✅ 图形化界面，参数可调
 
           ### 下载说明
-          - **Linux**: `pdf-retypeset-*-linux-x86_64.tar.gz`
-          - **Windows**: `pdf-retypeset-*-windows-x86_64.zip`
-          - **macOS**: `pdf-retypeset-*-macos-x86_64.tar.gz`
+          - **Linux**: `chinese-pdf-retypeset-*-linux-x86_64.tar.gz`
+          - **Windows**: `chinese-pdf-retypeset-*-windows-x86_64.zip`
+          - **macOS**: `chinese-pdf-retypeset-*-macos-x86_64.tar.gz`
 
           ### 使用方法
           1. 下载对应平台的文件
           2. 解压（如果是压缩包）
-          3. Linux/macOS: `chmod +x pdf-retypeset && ./pdf-retypeset`
-          4. Windows: 双击 `pdf-retypeset.exe`
+          3. Linux/macOS: `chmod +x chinese-pdf-retypeset && ./chinese-pdf-retypeset`
+          4. Windows: 双击 `chinese-pdf-retypeset.exe`
           5. 在GUI界面选择页面方向（横版/竖版）
           6. 拖拽PDF文件到界面或点击"浏览..."选择文件
           7. 点击"开始处理"
