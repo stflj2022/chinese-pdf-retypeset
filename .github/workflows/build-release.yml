@@ -42,9 +42,43 @@ jobs:
 
     - name: Package artifacts
       run: |
-        mkdir -p release
+        mkdir -p release/chinese-pdf-retypeset
         cd dist
         tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz chinese-pdf-retypeset
+        cp ../chinese-pdf-retypeset ../release/chinese-pdf-retypeset/
+        cp ../icon.png ../release/chinese-pdf-retypeset/
+        
+        # 创建.desktop启动器
+        cat > ../release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop << 'DESKTOP_EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=中文PDF重排工具
+Name[en]=Chinese PDF Retypeset
+Comment=智能重排扫描版PDF
+Comment[en]=Smart PDF Retypeset Tool
+Exec=chinese-pdf-retypeset
+Icon=icon.png
+Terminal=false
+Categories=Utility;Application;
+Keywords=PDF;重排;排版;
+StartupNotify=true
+DESKTOP_EOF
+        
+        chmod +x ../release/chinese-pdf-retypeset/chinese-pdf-retypeset
+        chmod +x ../release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
+        
+        # 创建启动脚本
+        cat > ../release/chinese-pdf-retypeset/start.sh << 'SCRIPT_EOF'
+#!/bin/bash
+cd "$(dirname "$0")"
+./chinese-pdf-retypeset
+SCRIPT_EOF
+        chmod +x ../release/chinese-pdf-retypeset/start.sh
+        
+        # 打包整个目录
+        cd release
+        tar -czf chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64-portable.tar.gz chinese-pdf-retypeset/
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -164,15 +198,23 @@ jobs:
           - ✅ 图形化界面，参数可调
 
           ### 下载说明
-          - **Linux**: `chinese-pdf-retypeset-*-linux-x86_64.tar.gz`
+          - **Linux便携版**: `chinese-pdf-retypeset-*-linux-x86_64-portable.tar.gz` （推荐，包含图标和启动器）
+          - **Linux单文件**: `chinese-pdf-retypeset-*-linux-x86_64.tar.gz`
           - **Windows**: `chinese-pdf-retypeset-*-windows-x86_64.zip`
           - **macOS**: `chinese-pdf-retypeset-*-macos-x86_64.tar.gz`
 
-          ### 使用方法
-          1. 下载对应平台的文件
-          2. 解压（如果是压缩包）
-          3. Linux/macOS: `chmod +x chinese-pdf-retypeset && ./chinese-pdf-retypeset`
-          4. Windows: 双击 `chinese-pdf-retypeset.exe`
+          ### 使用方法（Linux便携版）
+          1. 下载 `*-portable.tar.gz`
+          2. 解压：`tar -xzf *.tar.gz`
+          3. 进入目录：`cd chinese-pdf-retypeset`
+          4. 双击 `start.sh` 或 `chinese-pdf-retypeset.desktop`
+          5. 或在终端运行：`./chinese-pdf-retypeset`
+
+          ### 安装图标到桌面（Linux）
+          1. 解压便携版
+          2. 复制 `chinese-pdf-retypeset.desktop` 到桌面
+          3. 右键点击 -> 选择"允许启动"
+          4. 双击即可运行（会显示图标）
           5. 在GUI界面选择页面方向（横版/竖版）
           6. 拖拽PDF文件到界面或点击"浏览..."选择文件
           7. 点击"开始处理"
