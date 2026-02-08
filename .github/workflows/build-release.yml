@@ -44,8 +44,12 @@ jobs:
       run: |
         mkdir -p release/chinese-pdf-retypeset
         cd dist
+        
+        # 打包单文件版本
         tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz chinese-pdf-retypeset
-        cp ../chinese-pdf-retypeset ../release/chinese-pdf-retypeset/
+        
+        # 复制到便携版目录
+        cp chinese-pdf-retypeset ../release/chinese-pdf-retypeset/
         cp ../icon.png ../release/chinese-pdf-retypeset/
         cd ..
         
