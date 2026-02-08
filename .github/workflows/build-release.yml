@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'V*'
 
 jobs:
   build-linux:
@@ -156,11 +157,11 @@ jobs:
           ## PDF智能重排工具 ${{ github.ref_name }}
 
           ### 主要功能
-          - ✅ 自动检测PDF页面方向（横版/竖版）
+          - ✅ 支持横版/竖版手动选择（GUI界面）
           - ✅ 支持横排文本处理（从左到右，从上到下）
           - ✅ 支持竖排文本处理（从右到左，从上到下）
           - ✅ 拖拽文件导入功能
-          - ✅ 图形化界面
+          - ✅ 图形化界面，参数可调
 
           ### 下载说明
           - **Linux**: `pdf-retypeset-*-linux-x86_64.tar.gz`
@@ -172,11 +173,13 @@ jobs:
           2. 解压（如果是压缩包）
           3. Linux/macOS: `chmod +x pdf-retypeset && ./pdf-retypeset`
           4. Windows: 双击 `pdf-retypeset.exe`
-          5. 拖拽PDF文件到界面或点击"浏览..."选择文件
+          5. 在GUI界面选择页面方向（横版/竖版）
+          6. 拖拽PDF文件到界面或点击"浏览..."选择文件
+          7. 点击"开始处理"
 
-          ### 技术细节
-          - 横版参数：gap_threshold=0.5, area<30
-          - 竖版参数：area<50, tolerance=0.8
-          - 方向检测：avg_per_col > avg_per_row * 1.5
+          ### V3.0 新增功能
+          - 在GUI界面添加页面方向选择选项
+          - 移除自动检测功能，用户可手动指定
+          - 提高处理准确性和可控性
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
