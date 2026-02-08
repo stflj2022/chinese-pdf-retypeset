@@ -1,11 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
+# 图标路径（不同平台使用不同格式）
+icon_path = None
+if os.name == 'nt':  # Windows
+    icon_path = 'icon.ico'  # 需要.ico格式
+elif os.name == 'posix':  # Linux/macOS
+    icon_path = 'icon.png'  # 需要.png格式
 
 a = Analysis(
     ['run.py'],
     pathex=[],
     binaries=[],
-    datas=[('src', 'src')],
+    datas=[('src', 'src'), ('icon.png', '.') if os.path.exists('icon.png') else []],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -22,7 +30,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='pdf-retypeset',
+    name='chinese-pdf-retypeset',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,4 +43,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=icon_path if icon_path else None,
 )
