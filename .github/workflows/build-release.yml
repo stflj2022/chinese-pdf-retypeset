@@ -1,0 +1,182 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y poppler-utils
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile \
+          --name pdf-retypeset \
+          --add-data "src:src" \
+          --hidden-import=tkinter \
+          --hidden-import=PIL._tkinter_finder \
+          run.py
+
+    - name: Package artifacts
+      run: |
+        mkdir -p release
+        cd dist
+        tar -czf ../release/pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz pdf-retypeset
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: release/*
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile --name pdf-retypeset --add-data "src;src" --hidden-import=tkinter --hidden-import=PIL._tkinter_finder run.py
+
+    - name: Package artifacts
+      run: |
+        mkdir release
+        Copy-Item dist/pdf-retypeset.exe release/
+        Compress-Archive -Path release/pdf-retypeset.exe -DestinationPath release/pdf-retypeset-${{ github.ref_name }}-windows-x86_64.zip
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: release/*.zip
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        brew install poppler
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile \
+          --name pdf-retypeset \
+          --add-data "src:src" \
+          --hidden-import=tkinter \
+          --hidden-import=PIL._tkinter_finder \
+          run.py
+
+    - name: Package artifacts
+      run: |
+        mkdir -p release
+        cd dist
+        tar -czf ../release/pdf-retypeset-${{ github.ref_name }}-macos-x86_64.tar.gz pdf-retypeset
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: release/*
+
+  release:
+    name: Create Release
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure
+      run: ls -R artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/linux-build/*
+          artifacts/windows-build/*
+          artifacts/macos-build/*
+        body: |
+          ## PDF智能重排工具 ${{ github.ref_name }}
+
+          ### 主要功能
+          - ✅ 自动检测PDF页面方向（横版/竖版）
+          - ✅ 支持横排文本处理（从左到右，从上到下）
+          - ✅ 支持竖排文本处理（从右到左，从上到下）
+          - ✅ 拖拽文件导入功能
+          - ✅ 图形化界面
+
+          ### 下载说明
+          - **Linux**: `pdf-retypeset-*-linux-x86_64.tar.gz`
+          - **Windows**: `pdf-retypeset-*-windows-x86_64.zip`
+          - **macOS**: `pdf-retypeset-*-macos-x86_64.tar.gz`
+
+          ### 使用方法
+          1. 下载对应平台的文件
+          2. 解压（如果是压缩包）
+          3. Linux/macOS: `chmod +x pdf-retypeset && ./pdf-retypeset`
+          4. Windows: 双击 `pdf-retypeset.exe`
+          5. 拖拽PDF文件到界面或点击"浏览..."选择文件
+
+          ### 技术细节
+          - 横版参数：gap_threshold=0.5, area<30
+          - 竖版参数：area<50, tolerance=0.8
+          - 方向检测：avg_per_col > avg_per_row * 1.5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

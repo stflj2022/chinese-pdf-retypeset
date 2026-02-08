@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PDF竖版重排工具
+Name[en]=PDF Retypeset Tool
+Comment=扫描版PDF竖排转横排重排工具
+Comment[en]=Scanned PDF vertical to horizontal retypeset tool
+Exec=pdf-retypeset
+Icon=pdf-retypeset
+Categories=Office;Graphics;
+Terminal=false
+StartupNotify=true

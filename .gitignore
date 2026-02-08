@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test*.pdf
+*.pdf
+!龍樹_page5.pdf
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
+
+# Backup files
+*.backup
+*.bak
+
+# Build artifacts (GitHub Actions will build these)
+*.AppImage
+AppDir/usr/bin/pdf-retypeset
+dist/
+build/
