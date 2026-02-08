@@ -47,33 +47,18 @@ jobs:
         tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz chinese-pdf-retypeset
         cp ../chinese-pdf-retypeset ../release/chinese-pdf-retypeset/
         cp ../icon.png ../release/chinese-pdf-retypeset/
+        cd ..
         
         # 创建.desktop启动器
-        cd ../release/chinese-pdf-retypeset
-        cat > chinese-pdf-retypeset.desktop << 'EOF'
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=Chinese PDF Retypeset
-Comment=Smart PDF Retypeset Tool
-Exec=chinese-pdf-retypeset
-Icon=icon.png
-Terminal=false
-Categories=Utility;Application;
-StartupNotify=true
-EOF
-        chmod +x chinese-pdf-retypeset.desktop
+        printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Chinese PDF Retypeset\nComment=Smart PDF Retypeset Tool\nExec=chinese-pdf-retypeset\nIcon=icon.png\nTerminal=false\nCategories=Utility;Application;\nStartupNotify=true\n' > release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
+        chmod +x release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
         
         # 创建启动脚本
-        cat > start.sh << 'EOF'
-#!/bin/bash
-cd "$(dirname "$0")"
-./chinese-pdf-retypeset
-EOF
-        chmod +x start.sh
+        printf '#!/bin/bash\ncd "$(dirname "$0")"\n./chinese-pdf-retypeset\n' > release/chinese-pdf-retypeset/start.sh
+        chmod +x release/chinese-pdf-retypeset/start.sh
         
         # 打包整个目录
-        cd ..
+        cd release
         tar -czf chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64-portable.tar.gz chinese-pdf-retypeset/
 
     - name: Upload artifacts
