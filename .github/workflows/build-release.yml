@@ -49,35 +49,31 @@ jobs:
         cp ../icon.png ../release/chinese-pdf-retypeset/
         
         # 创建.desktop启动器
-        cat > ../release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop << 'DESKTOP_EOF'
+        cd ../release/chinese-pdf-retypeset
+        cat > chinese-pdf-retypeset.desktop << 'EOF'
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=中文PDF重排工具
-Name[en]=Chinese PDF Retypeset
-Comment=智能重排扫描版PDF
-Comment[en]=Smart PDF Retypeset Tool
+Name=Chinese PDF Retypeset
+Comment=Smart PDF Retypeset Tool
 Exec=chinese-pdf-retypeset
 Icon=icon.png
 Terminal=false
 Categories=Utility;Application;
-Keywords=PDF;重排;排版;
 StartupNotify=true
-DESKTOP_EOF
-        
-        chmod +x ../release/chinese-pdf-retypeset/chinese-pdf-retypeset
-        chmod +x ../release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
+EOF
+        chmod +x chinese-pdf-retypeset.desktop
         
         # 创建启动脚本
-        cat > ../release/chinese-pdf-retypeset/start.sh << 'SCRIPT_EOF'
+        cat > start.sh << 'EOF'
 #!/bin/bash
 cd "$(dirname "$0")"
 ./chinese-pdf-retypeset
-SCRIPT_EOF
-        chmod +x ../release/chinese-pdf-retypeset/start.sh
+EOF
+        chmod +x start.sh
         
         # 打包整个目录
-        cd release
+        cd ..
         tar -czf chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64-portable.tar.gz chinese-pdf-retypeset/
 
     - name: Upload artifacts
