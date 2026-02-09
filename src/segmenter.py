@@ -52,11 +52,20 @@ class Segmenter:
         self,
         binary_image: np.ndarray,
         gray_image: np.ndarray,
+        orientation: str = "vertical",
     ) -> List[CharacterBox]:
         """
-        默认分割（自动检测）
+        根据指定方向分割文本
+
+        Args:
+            binary_image: 二值化图像
+            gray_image: 灰度图像
+            orientation: 页面方向，"vertical"（竖版）或 "horizontal"（横版）
         """
-        return self.segment_auto(binary_image, gray_image)
+        if orientation == "horizontal":
+            return self.segment_horizontal(binary_image, gray_image)
+        else:
+            return self.segment_vertical(binary_image, gray_image)
 
     def segment_vertical(
         self,
@@ -75,14 +84,14 @@ class Segmenter:
         # 形态学处理
         processed = self._morphology_process(binary_image)
 
-        # 提取字块（照抄原版）
-        blocks = self._extract_blocks(processed, gray_image)
+        # 提取字块（照抄原版 - 使用竖版参数，不去重）
+        blocks = self._extract_blocks_for_vertical(processed, gray_image)
 
         if not blocks:
             return []
 
-        # 按x聚类成列（照抄原版）
-        columns = self._cluster_by_x(blocks)
+        # 按x聚类成列（照抄原版 - 使用竖版参数，tolerance=0.8）
+        columns = self._cluster_by_x_vertical(blocks)
 
         # 排序：从右到左 (X 降序)
         columns.sort(key=lambda col: -self._avg_x(col))
@@ -221,59 +230,6 @@ class Segmenter:
         strips.append(current_strip)
         return strips
 
-    def segment_auto(
-        self,
-        binary_image: np.ndarray,
-        gray_image: np.ndarray,
-    ) -> List[CharacterBox]:
-        """
-        自动检测文本方向并分割
-        """
-        # 检测页面方向
-        orientation = self.detect_orientation(binary_image, gray_image)
-
-        if orientation == "horizontal":
-            return self.segment_horizontal(binary_image, gray_image)
-        else:
-            return self.segment_vertical(binary_image, gray_image)
-
-    def detect_orientation(
-        self,
-        binary_image: np.ndarray,
-        gray_image: np.ndarray,
-    ) -> str:
-        """
-        检测页面方向（横版或竖版）
-
-        返回: "horizontal" 或 "vertical"
-        """
-        # 形态学处理
-        processed = self._morphology_process(binary_image)
-
-        # 提取字块（使用横版参数area<30，更宽松，能提取更多字块）
-        blocks = self._extract_blocks(processed, gray_image)
-
-        if not blocks:
-            return "vertical"  # 默认竖版
-
-        if len(blocks) < 10:
-            return "horizontal"  # 字块太少，默认横版
-
-        # 尝试两种聚类
-        rows = self._cluster_by_y(blocks)
-        columns = self._cluster_by_x_simple(blocks)
-
-        avg_per_row = len(blocks) / len(rows) if rows else 0
-        avg_per_col = len(blocks) / len(columns) if columns else 0
-
-        # 竖排特征：
-        # 1. 每列字数略多于每行（阈值1.05，非常宽松）
-        # 2. 列数在合理范围内（5-40列）
-        # 3. 总字数较多（说明密集排列）
-        if avg_per_col > avg_per_row * 1.05 and 5 <= len(columns) <= 40 and len(blocks) > 100:
-            return "vertical"
-
-        return "horizontal"
 
     def _avg_x(self, blocks: List[CharacterBox]) -> float:
         if not blocks:
@@ -561,43 +517,6 @@ class Segmenter:
         lines.append(current_line)
         return lines
 
-    def _cluster_by_x_simple(self, blocks: List[CharacterBox]) -> List[List[CharacterBox]]:
-        """按x坐标聚类成列（原始竖版项目的简单聚类）"""
-        if not blocks:
-            return []
-
-        if len(blocks) < 3:
-            return [blocks]
-
-        # 估算列数和容差
-        widths = [b.width for b in blocks]
-        median_w = sorted(widths)[len(widths) // 2]
-
-        # 容差：中位宽度的80%（原始竖版项目参数）
-        tolerance = median_w * 0.8
-
-        blocks_sorted = sorted(blocks, key=lambda b: b.center_x)
-
-        columns = []
-        current_col = [blocks_sorted[0]]
-        current_x = blocks_sorted[0].center_x
-
-        for block in blocks_sorted[1:]:
-            if abs(block.center_x - current_x) <= tolerance:
-                current_col.append(block)
-                current_x = sum(b.center_x for b in current_col) / len(current_col)
-            else:
-                columns.append(current_col)
-                current_col = [block]
-                current_x = block.center_x
-
-        columns.append(current_col)
-
-        # 过滤掉只有极少字符的列（除非总字符也很少）
-        if len(blocks) > 20:
-             columns = [col for col in columns if len(col) >= 1]
-
-        return columns
 
     def _cluster_by_x_vertical(self, blocks: List[CharacterBox]) -> List[List[CharacterBox]]:
         """按x坐标聚类成列（竖版参数）"""

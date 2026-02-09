@@ -15,14 +15,14 @@ from src.pipeline import Pipeline
 def main():
     """主入口"""
     parser = argparse.ArgumentParser(
-        description="扫描版PDF智能重排工具（自动检测横版/竖版）",
+        description="扫描版PDF重排工具（横版+竖版）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
   # 使用GUI
   python -m src.main --gui
 
-  # 命令行处理（自动检测方向）
+  # 命令行处理（指定方向）
   python -m src.main input.pdf output.pdf
 
   # 使用自定义配置

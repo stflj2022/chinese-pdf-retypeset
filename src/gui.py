@@ -9,7 +9,7 @@ from src.pipeline import Pipeline
 class App:
     def __init__(self, root):
         self.root = root
-        self.root.title("PDF智能重排工具（横版+竖版）")
+        self.root.title("PDF重排工具（横版+竖版）")
         self.root.geometry("600x500")
 
         self.config = load_config()
