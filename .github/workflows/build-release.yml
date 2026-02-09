@@ -53,8 +53,8 @@ jobs:
         cp ../icon.png ../release/chinese-pdf-retypeset/
         cd ..
         
-        # 创建.desktop启动器
-        printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Chinese PDF Retypeset\nComment=Smart PDF Retypeset Tool\nExec=chinese-pdf-retypeset\nIcon=icon.png\nTerminal=false\nCategories=Utility;Application;\nStartupNotify=true\n' > release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
+        # 创建.desktop启动器（使用相对路径）
+        printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Chinese PDF Retypeset\nName[zh]=中文PDF重排工具\nComment=Smart PDF Retypeset Tool\nComment[zh]=智能重排扫描版PDF\nExec=bash -c "cd $(dirname %k) && ./chinese-pdf-retypeset"\nIcon=$(dirname %k)/icon.png\nTerminal=false\nCategories=Utility;Application;\nStartupNotify=true\nMimeType=application/pdf;\n' > release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
         chmod +x release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
         
         # 创建启动脚本
@@ -192,21 +192,21 @@ jobs:
           1. 下载 `*-portable.tar.gz`
           2. 解压：`tar -xzf *.tar.gz`
           3. 进入目录：`cd chinese-pdf-retypeset`
-          4. 双击 `start.sh` 或 `chinese-pdf-retypeset.desktop`
-          5. 或在终端运行：`./chinese-pdf-retypeset`
+          4. **方法1**：双击 `start.sh` 启动
+          5. **方法2**：在终端运行：`./chinese-pdf-retypeset`
+          6. **方法3**：复制 `chinese-pdf-retypeset.desktop` 到桌面，右键"允许启动"
 
-          ### 安装图标到桌面（Linux）
-          1. 解压便携版
-          2. 复制 `chinese-pdf-retypeset.desktop` 到桌面
-          3. 右键点击 -> 选择"允许启动"
-          4. 双击即可运行（会显示图标）
-          5. 在GUI界面选择页面方向（横版/竖版）
-          6. 拖拽PDF文件到界面或点击"浏览..."选择文件
-          7. 点击"开始处理"
+          ### 依赖要求
+          - **Linux**: 需要安装 poppler-utils
+            ```bash
+            sudo apt-get install poppler-utils  # Debian/Ubuntu
+            sudo yum install poppler-utils      # Fedora/RHEL
+            ```
 
-          ### V3.0 新增功能
-          - 在GUI界面添加页面方向选择选项
-          - 移除自动检测功能，用户可手动指定
-          - 提高处理准确性和可控性
+          ### 使用步骤
+          1. 启动程序
+          2. 在GUI界面选择页面方向（横版/竖版）
+          3. 拖拽PDF文件到界面或点击"浏览..."选择文件
+          4. 点击"开始处理"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
