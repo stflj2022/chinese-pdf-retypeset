@@ -138,7 +138,7 @@ class Segmenter:
 
         # 每行固定切成5条
         result = []
-        strips_per_row = 5
+        strips_per_row = 15  # 增加到15条，每条更窄，避免放大后超宽
 
         for row_id, row_blocks in enumerate(rows):
             # 按X坐标排序
@@ -244,12 +244,13 @@ class Segmenter:
     def _morphology_process_horizontal(self, binary: np.ndarray) -> np.ndarray:
         """
         形态学处理：膨胀-腐蚀（横版专用）
-        使用温和参数，宁可字分开也不要过度合并导致缺失
+        使用小核但多次膨胀，连接笔画但不过度合并
         """
-        # 4x4核，膨胀1次，腐蚀1次
-        # 宁可某些字被分开（如"言"、"扑"），也不要过度合并导致字块缺失
-        kernel = np.ones((4, 4), np.uint8)
-        dilated = cv2.dilate(binary, kernel, iterations=1)
+        # 3x3核，膨胀2次，腐蚀1次
+        # - 小核：避免过度合并
+        # - 膨胀2次：确保笔画连接
+        kernel = np.ones((3, 3), np.uint8)
+        dilated = cv2.dilate(binary, kernel, iterations=2)
         eroded = cv2.erode(dilated, kernel, iterations=1)
         return eroded
 
@@ -312,10 +313,67 @@ class Segmenter:
                 height=h,
             ))
 
+        # 分割放大后会超宽的字块
+        blocks = self._split_oversized_blocks(blocks, gray)
+
         # 去重：移除重叠的字块（保留面积较大的）
         blocks = self._remove_overlapping_blocks(blocks)
 
         return blocks
+
+    def _split_oversized_blocks(self, blocks: List[CharacterBox], gray: np.ndarray) -> List[CharacterBox]:
+        """分割放大后会超宽的字块（如《唐诗鉴赏辞典》）"""
+        if not blocks:
+            return blocks
+
+        scale_factor = 3.0  # 放大3倍
+        page_width = gray.shape[1]
+        result = []
+
+        for block in blocks:
+            # 计算放大后的宽度
+            scaled_width = block.width * scale_factor
+
+            # 如果放大后超过页面宽度的60%，分割
+            if scaled_width > page_width * 0.6:
+                # 按每字约50像素估算，分成多份
+                num_splits = max(3, int(block.width / 50))
+                split_blocks = self._split_block_multiple(block, gray, num_splits)
+                if split_blocks:
+                    result.extend(split_blocks)
+                else:
+                    result.append(block)
+            else:
+                result.append(block)
+
+        return result
+
+    def _split_block_multiple(self, block: CharacterBox, gray: np.ndarray, num_splits: int) -> List[CharacterBox]:
+        """将字块等分成多份"""
+        if num_splits < 2:
+            return []
+
+        split_width = block.width // num_splits
+        result = []
+
+        for i in range(num_splits):
+            start_x = block.x + i * split_width
+            end_x = start_x + split_width if i < num_splits - 1 else block.x + block.width
+
+            width = end_x - start_x
+            if width < 10:
+                continue
+
+            block_image = gray[block.y:block.y+block.height, start_x:end_x].copy()
+            result.append(CharacterBox(
+                image=block_image,
+                x=start_x,
+                y=block.y,
+                width=width,
+                height=block.height,
+            ))
+
+        return result
 
     def _remove_overlapping_blocks(self, blocks: List[CharacterBox]) -> List[CharacterBox]:
         """移除重叠或相邻的重复字块"""

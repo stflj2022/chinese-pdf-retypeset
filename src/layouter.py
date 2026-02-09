@@ -65,6 +65,12 @@ class Layouter:
                     current_page = self._create_blank_page()
                     cursor_y = margin_y
 
+            # Check if char is too wide even on a new line
+            if new_w > self.page_width - 2 * margin_x:
+                # Char is too wide, still place it but don't truncate
+                # This allows wide chars (like long book titles) to be placed
+                pass
+
             # Place character
             # Ensure we don't go out of bounds (bottom edge)
             if cursor_y + new_h > self.page_height - margin_y:
@@ -74,27 +80,19 @@ class Layouter:
                  cursor_x = margin_x
                  current_line_max_h = 0
 
-            # Copy image to page (handling boundaries just in case)
+            # Copy image to page (no truncation for wide chars)
             h_place = min(new_h, self.page_height - cursor_y)
-            w_place = min(new_w, self.page_width - cursor_x)
+            w_place = new_w  # Don't truncate width
 
             if h_place > 0 and w_place > 0:
-                # Invert if source is white-on-black?
-                # Usually source is black text on white (gray 255).
-                # If source is binary 0/255 (0=black), we can just copy.
-                # If we want to make background white and text black:
-                # We assume the input char image is proper (text is dark).
-                # If binary image was inverted during processing, we might need to check.
-                # Assuming standard gray image where text is dark.
-
-                # We can do a direct copy or a mask copy.
-                # Direct copy is simpler for now.
-                # But to look good, we might want to multiply?
-                # Let's just copy the pixel values.
-
-                # If the background is white (255), we want to preserve it?
-                # Actually, standard paste is fine.
-                current_page[cursor_y:cursor_y+h_place, cursor_x:cursor_x+w_place] = resized_img[:h_place, :w_place]
+                # Check if still within page width
+                if cursor_x + w_place <= self.page_width:
+                    current_page[cursor_y:cursor_y+h_place, cursor_x:cursor_x+w_place] = resized_img[:h_place, :w_place]
+                else:
+                    # Still too wide, truncate to fit
+                    w_place = self.page_width - cursor_x
+                    if w_place > 0:
+                        current_page[cursor_y:cursor_y+h_place, cursor_x:cursor_x+w_place] = resized_img[:h_place, :w_place]
 
             # Update cursor
             cursor_x += new_w + char_spacing
