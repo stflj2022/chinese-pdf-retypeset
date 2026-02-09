@@ -61,6 +61,38 @@ jobs:
         printf '#!/bin/bash\ncd "$(dirname "$0")"\n./chinese-pdf-retypeset\n' > release/chinese-pdf-retypeset/start.sh
         chmod +x release/chinese-pdf-retypeset/start.sh
         
+        # 创建安装说明
+        printf '%s\n' '═══════════════════════════════════════════════════════════════' > release/chinese-pdf-retypeset/安装说明.txt
+        printf '%s\n' '  中文PDF重排工具 - Linux便携版 安装说明' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '%s\n' '═══════════════════════════════════════════════════════════════' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '快速安装桌面图标：\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '1. 在终端运行：bash 安装桌面图标.sh\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '2. 或手动复制：cp chinese-pdf-retypeset.desktop ~/桌面/\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '3. 右键桌面文件，选择"允许启动"\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '详细文档请访问：\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf 'https://github.com/stflj2022/chinese-pdf-retypeset\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        
+        # 创建安装脚本
+        printf '#!/bin/bash\n' > release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'CURRENT_DIR=$(pwd)\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'DESKTOP_DIR="$HOME/桌面"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'mkdir -p "$DESKTOP_DIR"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'cat > "$DESKTOP_DIR/中文PDF重排工具.desktop" << EOF\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf '[Desktop Entry]\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Version=1.0\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Type=Application\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Name=中文PDF重排工具\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Exec=$CURRENT_DIR/chinese-pdf-retypeset %%F\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Icon=$CURRENT_DIR/icon.png\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Terminal=false\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Categories=Utility;Office;\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'EOF\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'chmod +x "$DESKTOP_DIR/中文PDF重排工具.desktop"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'echo "桌面图标已安装，请右键选择允许启动"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        chmod +x release/chinese-pdf-retypeset/安装桌面图标.sh
+        
         # 打包整个目录
         cd release
         tar -czf chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64-portable.tar.gz chinese-pdf-retypeset/
