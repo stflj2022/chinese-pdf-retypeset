@@ -81,8 +81,8 @@ class Segmenter:
         4. 列排序：从右到左
         5. 每列内按y排序：从上到下
         """
-        # 形态学处理
-        processed = self._morphology_process(binary_image)
+        # 形态学处理（竖版专用）
+        processed = self._morphology_process_vertical(binary_image)
 
         # 提取字块（照抄原版 - 使用竖版参数，不去重）
         blocks = self._extract_blocks_for_vertical(processed, gray_image)
@@ -121,8 +121,8 @@ class Segmenter:
         4. 每行固定切成5条（按长度平均分配）
         5. 每条内按x排序
         """
-        # 形态学处理
-        processed = self._morphology_process(binary_image)
+        # 形态学处理（横版专用）
+        processed = self._morphology_process_horizontal(binary_image)
 
         # 提取字块
         blocks = self._extract_blocks(processed, gray_image)
@@ -241,15 +241,35 @@ class Segmenter:
             return 0
         return sum(b.center_y for b in blocks) / len(blocks)
 
-    def _morphology_process(self, binary: np.ndarray) -> np.ndarray:
+    def _morphology_process_horizontal(self, binary: np.ndarray) -> np.ndarray:
         """
-        形态学处理：膨胀-腐蚀
+        形态学处理：膨胀-腐蚀（横版专用）
+        使用温和参数，宁可字分开也不要过度合并导致缺失
         """
-        # 5x5核，膨胀2次，腐蚀2次
+        # 4x4核，膨胀1次，腐蚀1次
+        # 宁可某些字被分开（如"言"、"扑"），也不要过度合并导致字块缺失
+        kernel = np.ones((4, 4), np.uint8)
+        dilated = cv2.dilate(binary, kernel, iterations=1)
+        eroded = cv2.erode(dilated, kernel, iterations=1)
+        return eroded
+
+    def _morphology_process_vertical(self, binary: np.ndarray) -> np.ndarray:
+        """
+        形态学处理：膨胀-腐蚀（竖版专用）
+        使用原始参数，保持竖版稳定性
+        """
+        # 5x5核，膨胀2次，腐蚀2次（原始参数）
         kernel = np.ones((5, 5), np.uint8)
         dilated = cv2.dilate(binary, kernel, iterations=2)
         eroded = cv2.erode(dilated, kernel, iterations=2)
         return eroded
+
+    def _morphology_process(self, binary: np.ndarray) -> np.ndarray:
+        """
+        形态学处理：膨胀-腐蚀（已废弃，保留兼容性）
+        """
+        # 默认使用横版参数
+        return self._morphology_process_horizontal(binary)
 
     def _extract_blocks(
         self,
