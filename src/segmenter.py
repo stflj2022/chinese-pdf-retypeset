@@ -138,7 +138,7 @@ class Segmenter:
 
         # 每行固定切成5条
         result = []
-        strips_per_row = 15  # 增加到15条，每条更窄，避免放大后超宽
+        strips_per_row = 8  # 微调v9：从15减少到8，避免把单个字从中间切断
 
         for row_id, row_blocks in enumerate(rows):
             # 按X坐标排序
@@ -244,11 +244,12 @@ class Segmenter:
     def _morphology_process_horizontal(self, binary: np.ndarray) -> np.ndarray:
         """
         形态学处理：膨胀-腐蚀（横版专用）
-        使用小核但多次膨胀，连接笔画但不过度合并
+        v12稳定版本：最平衡的参数
         """
         # 3x3核，膨胀2次，腐蚀1次
         # - 小核：避免过度合并
         # - 膨胀2次：确保笔画连接
+        # - 腐蚀1次：恢复原始形状
         kernel = np.ones((3, 3), np.uint8)
         dilated = cv2.dilate(binary, kernel, iterations=2)
         eroded = cv2.erode(dilated, kernel, iterations=1)
@@ -277,7 +278,7 @@ class Segmenter:
         binary: np.ndarray,
         gray: np.ndarray,
     ) -> List[CharacterBox]:
-        """提取字块（横版参数 - 更宽松以保留"一"、"三"）"""
+        """提取字块（横版参数 - v11：增加标点符号过滤）"""
         num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
             binary, connectivity=8
         )
@@ -290,10 +291,10 @@ class Segmenter:
             h = stats[i, cv2.CC_STAT_HEIGHT]
             area = stats[i, cv2.CC_STAT_AREA]
 
-            # 过滤太小的噪点（保留扁字如"一"）
-            if area < 30:
+            # 过滤太小的噪点（微调v10：降低面积阈值到20，保留"灭"、"清"、"以"等小字块）
+            if area < 20:  # v7: 30 → v10: 20
                 continue
-            if w < 3 and h < 3:
+            if w < 2 and h < 2:  # v7: 3 → v10: 2
                 continue
 
             # 过滤太大的（可能是边框、图片、大块污渍等）
@@ -301,6 +302,14 @@ class Segmenter:
             page_area = binary.shape[0] * binary.shape[1]
             if w > binary.shape[1] * 0.3 or h > binary.shape[0] * 0.2 or area > page_area * 0.1:
                 continue
+
+            # v11新增：过滤标点符号（引号、书名号等）
+            # 标点符号特征：宽高比极端（非常细长或非常扁平）
+            aspect_ratio = w / h if h > 0 else 0
+            if aspect_ratio > 5 or aspect_ratio < 0.2:  # 宽高比>5或<0.2，可能是标点
+                # 但如果是扁字（如"一"），保留
+                if not (w > h * 3):  # 不是扁字
+                    continue
 
             # 从原始灰度图提取字块图像
             block_image = gray[y:y+h, x:x+w].copy()
@@ -414,19 +423,14 @@ class Segmenter:
         # 如果都是扁字块，使用更严格的去重
         if is_flat1 and is_flat2:
             x_diff = abs(block1.center_x - block2.center_x)
-            # 扁字块：如果X距离小于100像素，认为是重复
-            if x_diff < 100:
+            # 扁字块：如果X距离小于20像素，认为是重复（大幅降低阈值）
+            if x_diff < 20:
                 return True
 
-        # 在同一行，检查X方向的距离
-        x_diff = abs(block1.center_x - block2.center_x)
-        avg_width = (block1.width + block2.width) / 2
+        # v12微调：移除激进的X距离检查，避免把"灭"、"引"、"清"等字的两部分误判为重复
+        # 只检查真正的重叠，不检查相邻
 
-        # 如果X方向距离很近（小于平均宽度的0.8倍），认为是重复
-        if x_diff < avg_width * 0.8:
-            return True
-
-        # 否则检查是否有重叠
+        # 检查是否有重叠
         x1 = max(block1.x, block2.x)
         y1 = max(block1.y, block2.y)
         x2 = min(block1.x + block1.width, block2.x + block2.width)
