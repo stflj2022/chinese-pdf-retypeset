@@ -121,6 +121,14 @@ class Segmenter:
         4. 每行固定切成5条（按长度平均分配）
         5. 每条内按x排序
         """
+        # v27：先轻微腐蚀分离粘连，再水平膨胀连接
+        kernel_small = np.ones((2, 2), np.uint8)
+        binary_image = cv2.erode(binary_image, kernel_small, iterations=1)
+
+        # 水平方向膨胀，用1x4核
+        kernel_h = np.ones((1, 4), np.uint8)
+        binary_image = cv2.dilate(binary_image, kernel_h, iterations=1)
+
         # 形态学处理（横版专用）
         processed = self._morphology_process_horizontal(binary_image)
 
@@ -244,12 +252,9 @@ class Segmenter:
     def _morphology_process_horizontal(self, binary: np.ndarray) -> np.ndarray:
         """
         形态学处理：膨胀-腐蚀（横版专用）
-        v12稳定版本：最平衡的参数
+        v12稳定版：3x3核，膨胀2次，腐蚀1次
         """
-        # 3x3核，膨胀2次，腐蚀1次
-        # - 小核：避免过度合并
-        # - 膨胀2次：确保笔画连接
-        # - 腐蚀1次：恢复原始形状
+        # 3x3核，膨胀2次，腐蚀1次（v12稳定参数）
         kernel = np.ones((3, 3), np.uint8)
         dilated = cv2.dilate(binary, kernel, iterations=2)
         eroded = cv2.erode(dilated, kernel, iterations=1)

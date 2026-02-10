@@ -83,6 +83,12 @@ def main():
         choices=["pdf", "images"],
         help="输出格式 (默认: pdf)",
     )
+    parser.add_argument(
+        "--orientation",
+        choices=["vertical", "horizontal"],
+        default="vertical",
+        help="页面方向: vertical(竖版) 或 horizontal(横版) (默认: vertical)",
+    )
 
     args = parser.parse_args()
 
@@ -140,7 +146,7 @@ def main():
         sys.exit(1)
 
     try:
-        pipeline.process(input_path, output_path)
+        pipeline.process(input_path, output_path, orientation=args.orientation)
         print(f"处理完成: {output_path}")
     except Exception as e:
         print(f"处理失败: {e}")
