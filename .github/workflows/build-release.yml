@@ -1,0 +1,244 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'V*'
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y poppler-utils
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile \
+          --name chinese-pdf-retypeset \
+          --add-data "src:src" \
+          --hidden-import=tkinter \
+          --hidden-import=PIL._tkinter_finder \
+          run.py
+
+    - name: Package artifacts
+      run: |
+        mkdir -p release/chinese-pdf-retypeset
+        cd dist
+        
+        # 打包单文件版本
+        tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64.tar.gz chinese-pdf-retypeset
+        
+        # 复制到便携版目录
+        cp chinese-pdf-retypeset ../release/chinese-pdf-retypeset/
+        cp ../icon.png ../release/chinese-pdf-retypeset/
+        cd ..
+        
+        # 创建.desktop启动器（使用相对路径）
+        printf '[Desktop Entry]\nVersion=1.0\nType=Application\nName=Chinese PDF Retypeset\nName[zh]=中文PDF重排工具\nComment=Smart PDF Retypeset Tool\nComment[zh]=智能重排扫描版PDF\nExec=bash -c "cd $(dirname %%k) && ./chinese-pdf-retypeset"\nIcon=$(dirname %%k)/icon.png\nTerminal=false\nCategories=Utility;Application;\nStartupNotify=true\nMimeType=application/pdf;\n' > release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
+        chmod +x release/chinese-pdf-retypeset/chinese-pdf-retypeset.desktop
+        
+        # 创建启动脚本
+        printf '#!/bin/bash\ncd "$(dirname "$0")"\n./chinese-pdf-retypeset\n' > release/chinese-pdf-retypeset/start.sh
+        chmod +x release/chinese-pdf-retypeset/start.sh
+        
+        # 创建安装说明
+        printf '%s\n' '═══════════════════════════════════════════════════════════════' > release/chinese-pdf-retypeset/安装说明.txt
+        printf '%s\n' '  中文PDF重排工具 - Linux便携版 安装说明' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '%s\n' '═══════════════════════════════════════════════════════════════' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '快速安装桌面图标：\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '1. 在终端运行：bash 安装桌面图标.sh\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '2. 或手动复制：cp chinese-pdf-retypeset.desktop ~/桌面/\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '3. 右键桌面文件，选择"允许启动"\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf '详细文档请访问：\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        printf 'https://github.com/stflj2022/chinese-pdf-retypeset\n' >> release/chinese-pdf-retypeset/安装说明.txt
+        
+        # 创建安装脚本
+        printf '#!/bin/bash\n' > release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'CURRENT_DIR=$(pwd)\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'DESKTOP_DIR="$HOME/桌面"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'mkdir -p "$DESKTOP_DIR"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'cat > "$DESKTOP_DIR/中文PDF重排工具.desktop" << EOF\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf '[Desktop Entry]\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Version=1.0\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Type=Application\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Name=中文PDF重排工具\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Exec=$CURRENT_DIR/chinese-pdf-retypeset %%F\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Icon=$CURRENT_DIR/icon.png\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Terminal=false\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'Categories=Utility;Office;\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'EOF\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'chmod +x "$DESKTOP_DIR/中文PDF重排工具.desktop"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        printf 'echo "桌面图标已安装，请右键选择允许启动"\n' >> release/chinese-pdf-retypeset/安装桌面图标.sh
+        chmod +x release/chinese-pdf-retypeset/安装桌面图标.sh
+        
+        # 打包整个目录
+        cd release
+        tar -czf chinese-pdf-retypeset-${{ github.ref_name }}-linux-x86_64-portable.tar.gz chinese-pdf-retypeset/
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: release/*
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile --name chinese-pdf-retypeset --add-data "src;src" --hidden-import=tkinter --hidden-import=PIL._tkinter_finder run.py
+
+    - name: Package artifacts
+      run: |
+        mkdir release
+        Copy-Item dist/chinese-pdf-retypeset.exe release/
+        Compress-Archive -Path release/chinese-pdf-retypeset.exe -DestinationPath release/chinese-pdf-retypeset-${{ github.ref_name }}-windows-x86_64.zip
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: release/*.zip
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        brew install poppler
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build executable
+      run: |
+        pyinstaller --clean --noconfirm --onefile \
+          --name chinese-pdf-retypeset \
+          --add-data "src:src" \
+          --hidden-import=tkinter \
+          --hidden-import=PIL._tkinter_finder \
+          run.py
+
+    - name: Package artifacts
+      run: |
+        mkdir -p release
+        cd dist
+        tar -czf ../release/chinese-pdf-retypeset-${{ github.ref_name }}-macos-x86_64.tar.gz chinese-pdf-retypeset
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: release/*
+
+  release:
+    name: Create Release
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure
+      run: ls -R artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/linux-build/*
+          artifacts/windows-build/*
+          artifacts/macos-build/*
+        body: |
+          ## PDF智能重排工具 ${{ github.ref_name }}
+
+          ### 主要功能
+          - ✅ 支持横版/竖版手动选择（GUI界面）
+          - ✅ 支持横排文本处理（从左到右，从上到下）
+          - ✅ 支持竖排文本处理（从右到左，从上到下）
+          - ✅ 拖拽文件导入功能
+          - ✅ 图形化界面，参数可调
+
+          ### 下载说明
+          - **Linux便携版**: `chinese-pdf-retypeset-*-linux-x86_64-portable.tar.gz` （推荐，包含图标和启动器）
+          - **Linux单文件**: `chinese-pdf-retypeset-*-linux-x86_64.tar.gz`
+          - **Windows**: `chinese-pdf-retypeset-*-windows-x86_64.zip`
+          - **macOS**: `chinese-pdf-retypeset-*-macos-x86_64.tar.gz`
+
+          ### 使用方法（Linux便携版）
+          1. 下载 `*-portable.tar.gz`
+          2. 解压：`tar -xzf *.tar.gz`
+          3. 进入目录：`cd chinese-pdf-retypeset`
+          4. **方法1**：双击 `start.sh` 启动
+          5. **方法2**：在终端运行：`./chinese-pdf-retypeset`
+          6. **方法3**：复制 `chinese-pdf-retypeset.desktop` 到桌面，右键"允许启动"
+
+          ### 依赖要求
+          - **Linux**: 需要安装 poppler-utils
+            ```bash
+            sudo apt-get install poppler-utils  # Debian/Ubuntu
+            sudo yum install poppler-utils      # Fedora/RHEL
+            ```
+
+          ### 使用步骤
+          1. 启动程序
+          2. 在GUI界面选择页面方向（横版/竖版）
+          3. 拖拽PDF文件到界面或点击"浏览..."选择文件
+          4. 点击"开始处理"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
