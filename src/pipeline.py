@@ -2,6 +2,7 @@ import numpy as np
 from pathlib import Path
 from typing import Callable, Optional
 from pdf2image import convert_from_path
+from PIL import Image
 import cv2
 
 from src.config import Config
@@ -9,6 +10,7 @@ from src.preprocessor import Preprocessor
 from src.segmenter import Segmenter
 from src.layouter import Layouter
 from src.output import OutputGenerator
+
 
 class Pipeline:
     def __init__(self, config: Config):
@@ -26,14 +28,14 @@ class Pipeline:
         if self.progress_callback:
             self.progress_callback(current, total, message)
 
-    def process(self, input_path: Path, output_path: Path, orientation: str = "vertical"):
+    def process(self, input_path: Path, output_path: Path, orientation: str = "auto"):
         """
         处理PDF文件
 
         Args:
             input_path: 输入文件路径
             output_path: 输出文件路径
-            orientation: 页面方向，"vertical"（竖版）或 "horizontal"（横版）
+            orientation: 页面方向，"auto"（自动检测每页）、"vertical"（竖版）或 "horizontal"（横版）
         """
         # 1. Load PDF
         self._report_progress(0, 100, "正在加载PDF...")
@@ -41,7 +43,7 @@ class Pipeline:
             images = convert_from_path(str(input_path), dpi=self.config.input.dpi)
         except Exception as e:
             # Fallback for images
-            if input_path.suffix.lower() in ['.jpg', '.png', '.jpeg']:
+            if input_path.suffix.lower() in [".jpg", ".png", ".jpeg"]:
                 images = [cv2.imread(str(input_path))]
                 # Convert BGR to RGB for consistency if using PIL later, but we use CV2 internally
                 # actually convert_from_path returns PIL images.
@@ -53,12 +55,16 @@ class Pipeline:
                 raise e
 
         total_pages = len(images)
-        vertical_chars = []
-        horizontal_pages = []
+        # 改为：记录每页的内容和方向，按原始顺序输出
+        pages_content = []  # [(page_num, orientation, chars), ...]
 
         # 2. Process each page
         for i, img_pil in enumerate(images):
-            self._report_progress(int((i / total_pages) * 50), 100, f"正在分析第 {i+1}/{total_pages} 页...")
+            self._report_progress(
+                int((i / total_pages) * 50),
+                100,
+                f"正在分析第 {i + 1}/{total_pages} 页...",
+            )
 
             # Convert PIL to Numpy (Gray)
             img_np = np.array(img_pil)
@@ -70,28 +76,63 @@ class Pipeline:
             # Preprocess
             binary = self.preprocessor.process(gray)
 
-            # 使用用户指定的方向（不再自动检测）
-            # Segment based on orientation
-            if orientation == "vertical":
-                # 竖版：收集所有字符
-                chars = self.segmenter.segment_vertical(binary, gray)
-                vertical_chars.extend(chars)
+            # 确定页面方向
+            if orientation == "auto":
+                page_orientation = self.segmenter._detect_orientation(binary, gray)
             else:
-                # 横版：每页单独layout
+                page_orientation = orientation
+
+            # Segment based on orientation
+            if page_orientation == "vertical":
+                # 竖版：收集字符（暂不layout）
+                chars = self.segmenter.segment_vertical(binary, gray)
+                pages_content.append((i, "vertical", chars))
+            else:
+                # 横版：收集字符（暂不layout）
                 chars = self.segmenter.segment_horizontal(binary, gray)
+                pages_content.append((i, "horizontal", chars))
+
+        # 3. 按原始页码顺序处理和layout
+        output_pages = []
+        pending_vertical_chars = []
+
+        for page_num, orient, chars in pages_content:
+            if orient == "vertical":
+                # 竖版：累积字符，等到遇到横版或最后再layout
+                pending_vertical_chars.extend(chars)
+                # 检查下一页是否是横版，如果是则先layout当前竖版
+                next_page_is_horizontal = False
+                for next_p, next_o, _ in pages_content[page_num + 1 :]:
+                    if next_o == "horizontal" and next_p == page_num + 1:
+                        next_page_is_horizontal = True
+                        break
+                    if next_o == "vertical":
+                        break
+
+                if next_page_is_horizontal or page_num == len(pages_content) - 1:
+                    # 需要layout竖版字符了
+                    if pending_vertical_chars:
+                        self._report_progress(60, 100, f"正在重排竖版字符...")
+                        vertical_pages = self.layouter.layout(pending_vertical_chars)
+                        output_pages.extend(vertical_pages)
+                        pending_vertical_chars = []
+            else:
+                # 横版：先layout累积的竖版字符（如果有），再layout当前横版
+                if pending_vertical_chars:
+                    self._report_progress(60, 100, f"正在重排竖版字符...")
+                    vertical_pages = self.layouter.layout(pending_vertical_chars)
+                    output_pages.extend(vertical_pages)
+                    pending_vertical_chars = []
+
                 if chars:
                     page_output = self.layouter.layout(chars)
-                    horizontal_pages.extend(page_output)
+                    output_pages.extend(page_output)
 
-        # 3. Layout竖版字符
-        output_pages = []
-        if vertical_chars:
-            self._report_progress(60, 100, f"正在重排 {len(vertical_chars)} 个竖版字符...")
-            vertical_pages = self.layouter.layout(vertical_chars)
+        # 处理剩余的竖版字符
+        if pending_vertical_chars:
+            self._report_progress(60, 100, f"正在重排竖版字符...")
+            vertical_pages = self.layouter.layout(pending_vertical_chars)
             output_pages.extend(vertical_pages)
-
-        # 合并横版页面
-        output_pages.extend(horizontal_pages)
 
         # 4. Save
         self._report_progress(90, 100, "正在保存文件...")

@@ -16,6 +16,7 @@ from src.config import SegmentationConfig
 @dataclass
 class CharacterBox:
     """字符/字块边界框"""
+
     image: np.ndarray
     x: int
     y: int
@@ -60,12 +61,60 @@ class Segmenter:
         Args:
             binary_image: 二值化图像
             gray_image: 灰度图像
-            orientation: 页面方向，"vertical"（竖版）或 "horizontal"（横版）
+            orientation: 页面方向，"auto"（自动检测）、"vertical"（竖版）或 "horizontal"（横版）
         """
+        if orientation == "auto":
+            orientation = self._detect_orientation(binary_image, gray_image)
+
         if orientation == "horizontal":
             return self.segment_horizontal(binary_image, gray_image)
         else:
             return self.segment_vertical(binary_image, gray_image)
+
+    def _detect_orientation(self, binary: np.ndarray, gray: np.ndarray) -> str:
+        """
+        自动检测页面方向
+
+        策略：
+        竖版：字符按列排列，有多个列，X方向变化大
+        横版：字符按行排列，有多个行，Y方向变化大
+        """
+        # 简单提取字块
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+            binary, connectivity=8
+        )
+
+        blocks = []
+        for i in range(1, num_labels):
+            x = stats[i, cv2.CC_STAT_LEFT]
+            y = stats[i, cv2.CC_STAT_TOP]
+            w = stats[i, cv2.CC_STAT_WIDTH]
+            h = stats[i, cv2.CC_STAT_HEIGHT]
+            area = stats[i, cv2.CC_STAT_AREA]
+
+            if area < 50 or w < 5 or h < 5:
+                continue
+            if w > binary.shape[1] * 0.8 or h > binary.shape[0] * 0.8:
+                continue
+
+            blocks.append({"x": x, "y": y, "w": w, "h": h})
+
+        if len(blocks) < 10:
+            return "vertical"
+
+        x_coords = [b["x"] for b in blocks]
+        y_coords = [b["y"] for b in blocks]
+
+        # 竖版：unique_x < unique_y（列数少于行位置数）
+        # 横版：unique_x > unique_y（行位置数少于列分布）
+
+        unique_x = len(set([round(x / 20) * 20 for x in x_coords]))  # 每20px为一组
+        unique_y = len(set([round(y / 20) * 20 for y in y_coords]))  # 每20px为一组
+
+        if unique_x < unique_y * 0.7:
+            return "vertical"
+        else:
+            return "horizontal"
 
     def segment_vertical(
         self,
@@ -170,11 +219,15 @@ class Segmenter:
                 strip_end_x = row_min_x + (strip_id + 1) * strip_width_target
 
                 # 找出属于这一条的字块（中心点在范围内）
-                strip_blocks = [b for b in row_blocks if strip_start_x <= b.center_x < strip_end_x]
+                strip_blocks = [
+                    b for b in row_blocks if strip_start_x <= b.center_x < strip_end_x
+                ]
 
                 # 最后一条包含所有剩余的字块
                 if strip_id == strips_per_row - 1:
-                    strip_blocks = [b for b in row_blocks if b.center_x >= strip_start_x]
+                    strip_blocks = [
+                        b for b in row_blocks if b.center_x >= strip_start_x
+                    ]
 
                 if not strip_blocks:
                     continue
@@ -190,19 +243,23 @@ class Segmenter:
                 strip_height = max_y - min_y
                 strip_image = gray_image[min_y:max_y, min_x:max_x].copy()
 
-                result.append(CharacterBox(
-                    image=strip_image,
-                    x=min_x,
-                    y=min_y,
-                    width=strip_width,
-                    height=strip_height,
-                    line_id=row_id,
-                    char_id=strip_id,
-                ))
+                result.append(
+                    CharacterBox(
+                        image=strip_image,
+                        x=min_x,
+                        y=min_y,
+                        width=strip_width,
+                        height=strip_height,
+                        line_id=row_id,
+                        char_id=strip_id,
+                    )
+                )
 
         return result
 
-    def _split_row_into_strips(self, row_blocks: List[CharacterBox]) -> List[List[CharacterBox]]:
+    def _split_row_into_strips(
+        self, row_blocks: List[CharacterBox]
+    ) -> List[List[CharacterBox]]:
         """将一行按X方向的间距分割成多条"""
         if not row_blocks:
             return []
@@ -221,7 +278,7 @@ class Segmenter:
         current_strip = [row_blocks[0]]
 
         for i in range(1, len(row_blocks)):
-            prev_block = row_blocks[i-1]
+            prev_block = row_blocks[i - 1]
             curr_block = row_blocks[i]
 
             # 计算间距
@@ -237,7 +294,6 @@ class Segmenter:
 
         strips.append(current_strip)
         return strips
-
 
     def _avg_x(self, blocks: List[CharacterBox]) -> float:
         if not blocks:
@@ -305,7 +361,11 @@ class Segmenter:
             # 过滤太大的（可能是边框、图片、大块污渍等）
             # 加强过滤：宽度>30%或高度>20%或面积>10%都过滤
             page_area = binary.shape[0] * binary.shape[1]
-            if w > binary.shape[1] * 0.3 or h > binary.shape[0] * 0.2 or area > page_area * 0.1:
+            if (
+                w > binary.shape[1] * 0.3
+                or h > binary.shape[0] * 0.2
+                or area > page_area * 0.1
+            ):
                 continue
 
             # v11新增：过滤标点符号（引号、书名号等）
@@ -317,15 +377,17 @@ class Segmenter:
                     continue
 
             # 从原始灰度图提取字块图像
-            block_image = gray[y:y+h, x:x+w].copy()
+            block_image = gray[y : y + h, x : x + w].copy()
 
-            blocks.append(CharacterBox(
-                image=block_image,
-                x=x,
-                y=y,
-                width=w,
-                height=h,
-            ))
+            blocks.append(
+                CharacterBox(
+                    image=block_image,
+                    x=x,
+                    y=y,
+                    width=w,
+                    height=h,
+                )
+            )
 
         # 分割放大后会超宽的字块
         blocks = self._split_oversized_blocks(blocks, gray)
@@ -335,7 +397,9 @@ class Segmenter:
 
         return blocks
 
-    def _split_oversized_blocks(self, blocks: List[CharacterBox], gray: np.ndarray) -> List[CharacterBox]:
+    def _split_oversized_blocks(
+        self, blocks: List[CharacterBox], gray: np.ndarray
+    ) -> List[CharacterBox]:
         """分割放大后会超宽的字块（如《唐诗鉴赏辞典》）"""
         if not blocks:
             return blocks
@@ -362,7 +426,9 @@ class Segmenter:
 
         return result
 
-    def _split_block_multiple(self, block: CharacterBox, gray: np.ndarray, num_splits: int) -> List[CharacterBox]:
+    def _split_block_multiple(
+        self, block: CharacterBox, gray: np.ndarray, num_splits: int
+    ) -> List[CharacterBox]:
         """将字块等分成多份"""
         if num_splits < 2:
             return []
@@ -372,24 +438,30 @@ class Segmenter:
 
         for i in range(num_splits):
             start_x = block.x + i * split_width
-            end_x = start_x + split_width if i < num_splits - 1 else block.x + block.width
+            end_x = (
+                start_x + split_width if i < num_splits - 1 else block.x + block.width
+            )
 
             width = end_x - start_x
             if width < 10:
                 continue
 
-            block_image = gray[block.y:block.y+block.height, start_x:end_x].copy()
-            result.append(CharacterBox(
-                image=block_image,
-                x=start_x,
-                y=block.y,
-                width=width,
-                height=block.height,
-            ))
+            block_image = gray[block.y : block.y + block.height, start_x:end_x].copy()
+            result.append(
+                CharacterBox(
+                    image=block_image,
+                    x=start_x,
+                    y=block.y,
+                    width=width,
+                    height=block.height,
+                )
+            )
 
         return result
 
-    def _remove_overlapping_blocks(self, blocks: List[CharacterBox]) -> List[CharacterBox]:
+    def _remove_overlapping_blocks(
+        self, blocks: List[CharacterBox]
+    ) -> List[CharacterBox]:
         """移除重叠或相邻的重复字块"""
         if not blocks:
             return []
@@ -483,15 +555,17 @@ class Segmenter:
                 continue
 
             # 从原始灰度图提取字块图像
-            block_image = gray[y:y+h, x:x+w].copy()
+            block_image = gray[y : y + h, x : x + w].copy()
 
-            blocks.append(CharacterBox(
-                image=block_image,
-                x=x,
-                y=y,
-                width=w,
-                height=h,
-            ))
+            blocks.append(
+                CharacterBox(
+                    image=block_image,
+                    x=x,
+                    y=y,
+                    width=w,
+                    height=h,
+                )
+            )
 
         return blocks
 
@@ -524,15 +598,17 @@ class Segmenter:
                 continue
 
             # 从原始灰度图提取字块图像
-            block_image = gray[y:y+h, x:x+w].copy()
+            block_image = gray[y : y + h, x : x + w].copy()
 
-            blocks.append(CharacterBox(
-                image=block_image,
-                x=x,
-                y=y,
-                width=w,
-                height=h,
-            ))
+            blocks.append(
+                CharacterBox(
+                    image=block_image,
+                    x=x,
+                    y=y,
+                    width=w,
+                    height=h,
+                )
+            )
 
         # 去重：移除重叠的字块（保留面积较大的）
         blocks = self._remove_overlapping_blocks(blocks)
@@ -604,8 +680,9 @@ class Segmenter:
         lines.append(current_line)
         return lines
 
-
-    def _cluster_by_x_vertical(self, blocks: List[CharacterBox]) -> List[List[CharacterBox]]:
+    def _cluster_by_x_vertical(
+        self, blocks: List[CharacterBox]
+    ) -> List[List[CharacterBox]]:
         """按x坐标聚类成列（竖版参数）"""
         if not blocks:
             return []
@@ -639,7 +716,7 @@ class Segmenter:
 
         # 过滤掉只有极少字符的列（除非总字符也很少）
         if len(blocks) > 20:
-             columns = [col for col in columns if len(col) >= 1]
+            columns = [col for col in columns if len(col) >= 1]
 
         return columns
 
